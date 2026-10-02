@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Ownership Assessment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<style>
+  /* Michigan Virtual brand palette */
+  :root {
+    --black-teal:#091d20; --deep-teal:#093c44; --dark-teal:#115e6e; --light-teal:#2f8d98;
+    --bright-teal:#C7DEE0; --white-teal:#f3fafc; --green:#b5cd34; --a11y-green:#6a7f17;
+    --orange:#f7941e; --a11y-orange:#a84c2a; --dark-gray:#414042; --light-gray:#6d6e71;
+
+    --bg:var(--white-teal); --card:#ffffff; --fg:var(--black-teal); --head:var(--deep-teal);
+    --soft:var(--dark-gray); --faint:var(--light-gray); --hair:#D5E2E5;
+    --sel-bg:var(--bright-teal); --sel-br:var(--dark-teal); --accent:var(--dark-teal);
+    --track:#CBDADD;
+
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg:var(--black-teal); --card:#0D272C; --fg:var(--white-teal); --head:var(--bright-teal);
+      --soft:#BFD3D6; --faint:#8CA3A7; --hair:#1C454E; --sel-bg:#123A42;
+      --sel-br:var(--light-teal); --accent:var(--light-teal); --track:#1C454E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:var(--black-teal); --card:#0D272C; --fg:var(--white-teal); --head:var(--bright-teal);
+    --soft:#BFD3D6; --faint:#8CA3A7; --hair:#1C454E; --sel-bg:#123A42;
+    --sel-br:var(--light-teal); --accent:var(--light-teal); --track:#1C454E;
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font-family:"Figtree",Roboto,"Noto Sans",Helvetica,Arial,sans-serif; font-size:16px; line-height:1.55; }
+  .wrap { max-width:46rem; margin:0 auto; padding:2rem 1.15rem 4rem; }
+
+  h1 { font-family:"IBM Plex Serif",Garamond,"Noto Serif",Times,serif; font-weight:600;
+    font-size:clamp(1.7rem,5.2vw,2.45rem); line-height:1.12; color:var(--head); margin:0 0 .45rem; }
+  h2 { font-family:"IBM Plex Serif",Garamond,"Noto Serif",Times,serif; font-weight:600;
+    font-size:clamp(1.3rem,3.8vw,1.7rem); line-height:1.18; color:var(--head); margin:0 0 .45rem; }
+  h3 { font-size:.95rem; font-weight:700; color:var(--fg); margin:1.4rem 0 .35rem; }
+  p { margin:.5rem 0; color:var(--soft); }
+  .q { font-size:1.02rem; font-weight:600; color:var(--fg); margin:0 0 .15rem; }
+  .qsub { font-size:.85rem; color:var(--faint); margin:0 0 .65rem; }
+  .divider { height:3px; width:3.2rem; background:var(--green); border-radius:2px; margin:.1rem 0 1.1rem; }
+
+  .hero { display:grid; grid-template-columns:1fr; gap:1.1rem; align-items:center; margin-bottom:.4rem; }
+  @media (min-width:640px) { .hero { grid-template-columns:1fr 11rem; gap:2rem; } }
+  .hero svg { width:9.5rem; height:9.5rem; display:block; margin:0 auto; }
+  @media (min-width:640px) { .hero svg { width:11rem; height:11rem; } }
+  .hero p { font-size:1rem; }
+  .hero p:first-of-type { color:var(--fg); font-size:1.05rem; }
+
+  .steps { display:flex; gap:.3rem; align-items:center; margin-bottom:1.4rem;
+    font-size:.72rem; color:var(--faint); flex-wrap:wrap; }
+  .steps span { display:inline-flex; align-items:center; gap:.35rem; }
+  .dot { width:.5rem; height:.5rem; border-radius:50%; background:var(--hair); display:inline-block; }
+  .dot.on { background:var(--orange); }
+  .dot.done { background:var(--green); }
+
+  .card { background:var(--card); border:1px solid var(--hair); border-radius:10px; padding:1.1rem; margin:1rem 0; }
+
+  .opt { display:block; width:100%; text-align:left; font:inherit; border:1px solid var(--hair);
+    border-radius:8px; padding:.65rem .8rem; margin:.4rem 0; cursor:pointer;
+    background:var(--bg); color:var(--soft); font-size:.95rem; }
+  .opt:hover { border-color:var(--light-teal); }
+  .opt[aria-pressed="true"] { border-color:var(--sel-br); background:var(--sel-bg); color:var(--fg); font-weight:600; }
+  .opt:focus-visible { outline:3px solid var(--orange); outline-offset:2px; }
+
+  .info { flex:0 0 auto; width:1.3rem; height:1.3rem; border-radius:50%; padding:0;
+    border:1.5px solid var(--light-teal); background:transparent; color:var(--light-teal);
+    font-family:"IBM Plex Serif",serif; font-style:italic; font-weight:600; font-size:.82rem;
+    line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+  .info:hover { background:var(--light-teal); color:#fff; }
+  .info[aria-expanded="true"] { background:var(--dark-teal); border-color:var(--dark-teal); color:#fff; }
+  .info:focus-visible { outline:3px solid var(--orange); outline-offset:2px; }
+  .infoBox { display:none; font-size:.84rem; line-height:1.5; color:var(--soft);
+    background:var(--sel-bg); border-radius:6px; padding:.55rem .7rem; margin:.5rem 0 .1rem; }
+  .infoBox.open { display:block; }
+
+  .roleRow { border-top:1px solid var(--hair); padding:.9rem 0 1rem; }
+  .roleRow:last-of-type { border-bottom:1px solid var(--hair); }
+  .roleTop { display:flex; justify-content:space-between; align-items:flex-start; gap:.7rem; }
+  .roleLeft { display:flex; align-items:flex-start; gap:.5rem; }
+  .roleName { font-size:.95rem; color:var(--fg); font-weight:500; }
+  .na { font:inherit; font-size:.74rem; white-space:nowrap; padding:.22rem .5rem;
+    border:1px solid var(--hair); border-radius:999px; background:transparent; color:var(--faint); cursor:pointer; }
+  .na[aria-pressed="true"] { background:var(--sel-bg); border-color:var(--sel-br); color:var(--fg); font-weight:600; }
+  .na:focus-visible { outline:3px solid var(--orange); outline-offset:2px; }
+  .sliderWrap { margin-top:.55rem; }
+  .roleRow.off .sliderWrap { opacity:.35; pointer-events:none; }
+
+  input[type="range"] { -webkit-appearance:none; appearance:none; width:100%; background:transparent;
+    margin:0; height:1.75rem; cursor:pointer; }
+  input[type="range"]::-webkit-slider-runnable-track { height:6px; border-radius:3px; background:var(--track); }
+  input[type="range"]::-moz-range-track { height:6px; border-radius:3px; background:var(--track); }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none;
+    width:1.35rem; height:1.35rem; border-radius:50%; margin-top:-.5rem;
+    background:var(--accent); border:3px solid var(--card); box-shadow:0 0 0 1px var(--accent); }
+  input[type="range"]::-moz-range-thumb { width:1.1rem; height:1.1rem; border-radius:50%;
+    background:var(--accent); border:3px solid var(--card); box-shadow:0 0 0 1px var(--accent); }
+  input[type="range"]:focus-visible { outline:3px solid var(--orange); outline-offset:4px; border-radius:6px; }
+  input[type="range"].untouched::-webkit-slider-thumb { background:var(--faint); box-shadow:0 0 0 1px var(--faint); }
+  input[type="range"].untouched::-moz-range-thumb { background:var(--faint); box-shadow:0 0 0 1px var(--faint); }
+
+  .ends { display:flex; justify-content:space-between; font-size:.72rem; color:var(--faint); margin-top:-.15rem; }
+  .readout { font-size:.84rem; font-weight:600; color:var(--accent); text-align:center; margin-top:.25rem; min-height:1.25rem; }
+  .readout.untouched { color:var(--faint); font-weight:400; font-style:italic; }
+
+  .nav { display:flex; gap:.6rem; margin-top:1.5rem; flex-wrap:wrap; align-items:center; }
+  button.go { font:inherit; font-weight:700; font-size:.95rem; padding:.62rem 1.4rem; border-radius:8px;
+    border:1px solid var(--orange); background:var(--orange); color:var(--black-teal); cursor:pointer; }
+  button.go:hover, button.go:focus-visible { background:var(--a11y-orange); border-color:var(--a11y-orange); color:#fff; }
+  button.go:focus-visible { outline:3px solid var(--dark-teal); outline-offset:2px; }
+  button.go[disabled] { opacity:.55; cursor:progress; }
+  button.ghost { background:transparent; color:var(--soft); border-color:var(--hair); font-weight:600; }
+  button.ghost:hover, button.ghost:focus-visible { background:transparent; color:var(--a11y-orange); border-color:var(--a11y-orange); }
+  button.arm { color:var(--a11y-orange); border-color:var(--a11y-orange); }
+  .status { font-size:.84rem; color:var(--soft); }
+
+  .scale { position:relative; height:2.9rem; margin:1.3rem 0 .4rem; }
+  .track { position:absolute; top:1.15rem; left:0; right:0; height:4px; background:var(--track); border-radius:2px; }
+  .mark { position:absolute; top:.42rem; transform:translateX(-50%); text-align:center; }
+  .mark .pin { width:1rem; height:1rem; border-radius:50%; border:3px solid var(--card); }
+  .mark .tag { font-size:.68rem; white-space:nowrap; margin-top:.25rem; font-weight:700; }
+  .scaleEnds { display:flex; justify-content:space-between; font-size:.72rem; color:var(--faint); }
+
+  .verdict { font-family:"IBM Plex Serif",Garamond,serif; font-size:clamp(1.15rem,3.2vw,1.45rem);
+    line-height:1.3; margin:0 0 .5rem; color:var(--head); }
+
+  .bigResult { text-align:center; padding:1.6rem 1rem 1.5rem; }
+  .bigResult .pre { font-size:.95rem; color:var(--faint); margin:0 0 .3rem; letter-spacing:.02em; }
+  .bigResult .band { font-family:"IBM Plex Serif",Garamond,"Noto Serif",Times,serif;
+    font-weight:600; font-size:clamp(2rem,7.5vw,3.3rem); line-height:1.05; color:var(--head);
+    margin:0; letter-spacing:-.015em; }
+  .bigResult .cat { font-size:.8rem; color:var(--faint); margin:.85rem 0 0; }
+
+  .dials { display:grid; grid-template-columns:1fr; gap:.5rem; margin:.4rem 0 0; }
+  @media (min-width:640px) { .dials { grid-template-columns:repeat(3,1fr); } }
+  .dial { border:1px solid var(--hair); border-radius:8px; padding:.65rem .7rem; background:var(--card); }
+  .dialHead { display:flex; align-items:center; justify-content:space-between; gap:.4rem; margin-bottom:.35rem; }
+  .dial .dn { font-size:.8rem; color:var(--fg); font-weight:700; }
+  .bar { height:6px; border-radius:3px; background:var(--track); overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--dark-teal); }
+  .dial .dv { font-size:.8rem; color:var(--soft); margin-top:.3rem; }
+
+  .ledger { display:grid; grid-template-columns:1fr; gap:.9rem; }
+  @media (min-width:680px) { .ledger { grid-template-columns:1fr 1fr; } }
+  .lcol { border-radius:8px; padding:.95rem 1rem; border:1px solid var(--hair); }
+  .lcol.claim { background:var(--sel-bg); border-color:var(--sel-br); }
+  .lcol.resp { background:var(--card); border-left:4px solid var(--orange); }
+  .lcol h4 { margin:0 0 .5rem; font-size:.85rem; font-weight:700; color:var(--fg); }
+  .lcol ul { margin:0; padding-left:1.1rem; font-size:.88rem; color:var(--soft); }
+  .lcol li { margin:.22rem 0; }
+  .lcol .fixed { font-size:.74rem; color:var(--faint); margin-top:.6rem; font-style:italic; }
+
+  .recap { font-size:.9rem; }
+  .recap div { padding:.45rem 0; border-top:1px solid var(--hair); display:flex; justify-content:space-between; gap:1rem; }
+  .recap div:first-child { border-top:0; }
+  .recap b { color:var(--fg); font-weight:600; }
+  .recap span { color:var(--soft); text-align:right; }
+
+  .note { font-size:.82rem; color:var(--faint); line-height:1.5; }
+  .hidden { display:none; }
+  .err { color:var(--a11y-orange); font-size:.86rem; margin-top:.5rem; font-weight:600; }
+  footer { margin-top:2.4rem; border-top:3px solid var(--green); padding-top:1rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="steps" id="steps"></div>
+
+<section id="s1">
+  <h1>AI Ownership Assessment</h1>
+  <div class="divider"></div>
+
+  <div class="hero">
+    <div>
+      <p>When you make something with AI, it often feels like yours. Sometimes that feeling is earned and sometimes it isn't.</p>
+      <p>This activity will take about four minutes. You'll give a gut reaction first, then go through the work part by part to identify the work you did, and the work the AI did. At the end you'll see how your instinct compares with your own account of what you did.</p>
+      <p>Nothing is scored and nothing is sent anywhere. This is an activity to build awareness and reflection. Answer honestly as you reflect on your work.</p>
+    </div>
+    <svg viewBox="0 0 180 180" role="img" aria-label="Three nested arcs showing partial contribution, with a separate marker further around the outer ring showing the felt sense of ownership.">
+      <g fill="none" stroke-linecap="round">
+        <circle cx="90" cy="90" r="70" stroke="var(--track)" stroke-width="11"/>
+        <circle cx="90" cy="90" r="54" stroke="var(--track)" stroke-width="11"/>
+        <circle cx="90" cy="90" r="38" stroke="var(--track)" stroke-width="11"/>
+        <circle cx="90" cy="90" r="70" stroke="var(--light-teal)" stroke-width="11"
+          stroke-dasharray="312 440" transform="rotate(-90 90 90)"/>
+        <circle cx="90" cy="90" r="54" stroke="var(--dark-teal)" stroke-width="11"
+          stroke-dasharray="180 340" transform="rotate(-90 90 90)"/>
+        <circle cx="90" cy="90" r="38" stroke="var(--deep-teal)" stroke-width="11"
+          stroke-dasharray="72 239" transform="rotate(-90 90 90)"/>
+      </g>
+      <circle cx="48.9" cy="33.4" r="7" fill="var(--orange)"/>
+      <circle cx="90" cy="90" r="13" fill="none" stroke="var(--green)" stroke-width="3"/>
+    </svg>
+  </div>
+
+  <div class="card">
+    <p class="q">What kind of work is this?</p>
+    <p class="qsub">This sets both the parts you'll rate and the questions you'll be asked.</p>
+    <div id="preset"></div>
+    <h3 style="margin-top:1.3rem">Before you think about it: how much does this feel like yours?</h3>
+    <p class="qsub">Go with your gut. You won't see this answer again until the end.</p>
+    <div id="gut"></div>
+  </div>
+  <div class="nav"><button class="go" id="to2">Start</button></div>
+  <p class="err hidden" id="e1">Pick an answer for both to continue.</p>
+</section>
+
+<section id="s2" class="hidden">
+  <h2 id="s2title">What actually went into it?</h2>
+  <div class="divider"></div>
+  <p>Slide each one to where it really landed. Tap the <span style="font-family:'IBM Plex Serif',serif;font-style:italic;color:var(--light-teal)">i</span> if you're not sure what a part means. If something wasn't part of this work, mark it not applicable.</p>
+  <div id="roles"></div>
+  <div class="nav">
+    <button class="ghost go" id="back2">Back</button>
+    <button class="go" id="to3">Next</button>
+  </div>
+  <p class="err hidden" id="e2">Set at least three sliders to continue.</p>
+</section>
+
+<section id="s3" class="hidden">
+  <h2>Five questions</h2>
+  <div class="divider"></div>
+  <p>Answer honestly rather than well. A low answer here is information, not a failure.</p>
+  <div id="qs"></div>
+  <div class="nav">
+    <button class="ghost go" id="back3">Back</button>
+    <button class="go" id="to4">See the result</button>
+  </div>
+  <p class="err hidden" id="e3">Answer all five to continue.</p>
+</section>
+
+<section id="s4" class="hidden">
+  <h2 id="resultTitle">Result: How much do you own?</h2>
+  <div class="divider"></div>
+
+  <div class="card bigResult">
+    <p class="pre">This work is</p>
+    <p class="band" id="bigBand"></p>
+    <p class="cat" id="bigCat"></p>
+  </div>
+
+  <div class="card">
+    <p class="verdict" id="verdict"></p>
+    <p id="verdictSub" style="margin-top:0"></p>
+    <div class="scale" id="scale"><div class="track"></div></div>
+    <div class="scaleEnds"><span>Mostly the tool's</span><span>Shared</span><span>Mostly yours</span></div>
+  </div>
+
+  <h3>The three routes to ownership</h3>
+  <p class="note" style="margin-top:-.2rem">Something feels like ours through control over it, knowledge of why it is the way it is, and what we invested in it. AI tends to leave one of these much thinner than the others.</p>
+  <div class="dials" id="dials"></div>
+  <p id="dialNote" class="note" style="margin-top:.7rem"></p>
+
+  <h3>Credit and responsibility</h3>
+  <div class="ledger">
+    <div class="lcol claim">
+      <h4>What you can claim</h4>
+      <ul id="claimList"></ul>
+    </div>
+    <div class="lcol resp">
+      <h4>What you are responsible for either way</h4>
+      <ul>
+        <li>Every factual claim in it being true</li>
+        <li>Every source being real and saying what it's cited for</li>
+        <li>Anything in it that misleads a reader</li>
+        <li>Everything that follows from your name being on it</li>
+      </ul>
+      <p class="fixed" id="verifyNote">This column doesn't change based on your answers. Credit is prorated to what you contributed. Responsibility isn't.</p>
+    </div>
+  </div>
+
+  <h3>Your answers</h3>
+  <div class="card recap" id="recap"></div>
+
+  <div class="card" style="background:var(--bg)">
+    <p class="note" style="margin:0"><strong style="color:var(--fg)">One honest limit.</strong> This records what you were willing to say about your own work. It is a reflection prompt, not a measurement, and the research behind it says our sense of ownership is poorly calibrated to begin with. Treat the result as a conversation starter.</p>
+  </div>
+
+  <div class="nav">
+    <button class="ghost go" id="back4">Back</button>
+    <button class="go hidden" id="pdfBtn">Download PDF</button>
+    <button class="ghost go" id="resetBtn">Start over</button>
+    <span class="status" id="dlStatus"></span>
+  </div>
+</section>
+
+<footer class="note">
+  Built on Pierce, Kostova &amp; Dirks (2001) on the routes to psychological ownership, and Porsdam Mann, Earp, Nyholm et al. (2023) on the credit&ndash;blame asymmetry.
+</footer>
+</div>
+
+<script>
+const DIAL_INFO = {
+  Control: "Whether you shaped the parts that matter or approved what appeared. Setting the direction counts for a lot; adjusting what came back counts for less.",
+  Knowledge: "Whether you can explain why the work is this way rather than some other way. This is the route AI weakens most, because the reasoning stays inside the tool.",
+  Investment: "What you put in that you can't get back. Time, attention, and the rounds you spent getting it right."
+};
+
+const CATS = {
+  "Writing": {
+    title: "What went into the writing?",
+    roles: [
+      { t:"Deciding what it would argue or say", i:"The central claim or purpose of the piece. Whether you arrived at it, or accepted one you were handed." },
+      { t:"Finding the sources or evidence", i:"Locating the material the piece rests on, rather than being given a ready-made list." },
+      { t:"Checking the sources are real and say what they're cited for", i:"Opening them and confirming. Not scanning to see whether they look plausible." },
+      { t:"Structuring it", i:"The order of the parts, and why one point comes before another." },
+      { t:"Writing the sentences", i:"The actual words on the page, including the ones you read and kept unchanged." },
+      { t:"Revising and cutting", i:"Judging what was weak and removing it. Often where the real thinking happens." },
+      { t:"Deciding when it was done", i:"Calling it finished because it met a standard, rather than because output appeared." }
+    ],
+    qs: [
+      { id:"control", q:"Could you name an argument or choice in this that you decided and the tool did not?", sub:"A position you took, an angle, an example you insisted on.",
+        o:[["Several, and they shaped the whole piece",1],["One clear one",.7],["Mostly I adjusted its wording",.35],["Not really, I kept what it wrote",0]] },
+      { id:"knowledge", q:"Could you explain why a particular paragraph or claim is there and not something else?", sub:"Pick any section and try it in your head.",
+        o:[["Yes, for most of the piece",1],["For the parts I rewrote",.7],["Only in general terms",.35],["No, it just came out that way",0]] },
+      { id:"investment", q:"What did you put into this that you can't get back?", sub:"Time spent reading, drafting, cutting, and rewriting.",
+        o:[["Hours of reading and rewriting",1],["A solid working session",.7],["A few minutes of prompting",.35],["Almost nothing",0]] },
+      { id:"verify", q:"Did you check that the facts and sources are real and say what they're cited for?", sub:"Not whether they looked plausible. Whether you actually opened them.",
+        o:[["Yes, every one",1],["Most of them",.7],["I skimmed",.35],["No",0]] },
+      { id:"rebuild", q:"Could you write something like this again without the tool?", sub:"The hardest question here, and the most useful one.",
+        o:[["Yes, all of it",1],["Parts of it",.5],["No",0]] }
+    ]
+  },
+  "Project or build": {
+    title: "What went into the build?",
+    roles: [
+      { t:"Defining the problem worth solving", i:"Choosing what this should fix, and for whom, before anything got built." },
+      { t:"Designing the approach", i:"The shape of the solution. How the pieces fit, and why this way rather than another." },
+      { t:"Building it", i:"Producing the working thing itself, piece by piece." },
+      { t:"Finding and fixing what broke", i:"Diagnosing failures. Usually where real understanding gets formed." },
+      { t:"Testing it on something real", i:"Putting it in front of actual conditions or users, not just confirming it ran." },
+      { t:"Deciding what was good enough", i:"Setting the bar for done, and judging the result against it." }
+    ],
+    qs: [
+      { id:"control", q:"Could you name a design decision you made that the tool did not?", sub:"How it works, what it does, what it deliberately leaves out.",
+        o:[["Several, and they shaped the whole build",1],["One clear one",.7],["Mostly I accepted its approach and tweaked",.35],["Not really, I used what it produced",0]] },
+      { id:"knowledge", q:"Could you explain why it works the way it does?", sub:"Pick any part of it and walk through why that choice and not another.",
+        o:[["Yes, I could walk someone through it",1],["For the parts I wrote or fixed",.7],["Only at a high level",.35],["No, I'd have to go read it first",0]] },
+      { id:"investment", q:"What did you put into this that you can't get back?", sub:"Time spent designing, building, and debugging.",
+        o:[["Hours of building and debugging",1],["A solid working session",.7],["A few minutes of prompting",.35],["Almost nothing",0]] },
+      { id:"verify", q:"Did you test it yourself, beyond checking that it ran?", sub:"Not whether it looked finished. Whether you tried to break it.",
+        o:[["Yes, properly, including the edge cases",1],["I tried the main paths",.7],["I checked that it ran",.35],["No",0]] },
+      { id:"rebuild", q:"Could you build something like this again without the tool?", sub:"The hardest question here, and the most useful one.",
+        o:[["Yes, all of it",1],["Parts of it",.5],["No",0]] }
+    ]
+  },
+  "Research": {
+    title: "What went into the research?",
+    roles: [
+      { t:"Forming the question", i:"The thing you actually wanted to know, stated precisely enough to answer." },
+      { t:"Finding the literature or data", i:"Locating the body of work or the dataset, including what you chose to leave out." },
+      { t:"Making sense of what it says", i:"Reading it closely enough to restate it in your own terms." },
+      { t:"Running the analysis", i:"Doing the actual work on the data or the texts." },
+      { t:"Interpreting what it means", i:"Moving from results to meaning, including the limits of what they support." },
+      { t:"Drawing the conclusions", i:"The claims you are willing to stand behind in public." }
+    ],
+    qs: [
+      { id:"control", q:"Was the question yours?", sub:"The thing you actually wanted to know, not a topic you accepted.",
+        o:[["Yes, and I refined it myself",1],["Yes, though the tool helped sharpen it",.7],["The tool suggested it and I went with it",.35],["It came from the tool entirely",0]] },
+      { id:"knowledge", q:"Could you explain why this method or interpretation and not another?", sub:"Including the alternatives you ruled out.",
+        o:[["Yes, and I could defend what I rejected",1],["For the parts I worked through",.7],["Only in general terms",.35],["No",0]] },
+      { id:"investment", q:"What did you put into this that you can't get back?", sub:"Time spent reading, analysing, and sitting with the findings.",
+        o:[["Hours of reading and analysis",1],["A solid working session",.7],["A few minutes of prompting",.35],["Almost nothing",0]] },
+      { id:"verify", q:"Did you go back to the primary sources yourself?", sub:"Not the summary of them. The sources.",
+        o:[["Yes, all the ones that matter",1],["Some of them",.7],["I skimmed the abstracts",.35],["No",0]] },
+      { id:"rebuild", q:"Could you defend this to someone who knows the field?", sub:"The hardest question here, and the most useful one.",
+        o:[["Yes, including where I'd be challenged",1],["The main findings, not the detail",.5],["No",0]] }
+    ]
+  },
+  "Creative or design": {
+    title: "What went into the piece?",
+    roles: [
+      { t:"The original concept", i:"The idea of what this should be, before any version of it existed." },
+      { t:"Composition and layout choices", i:"Where things sit, what dominates, what recedes." },
+      { t:"Making the thing itself", i:"Producing the actual image, object, or layout." },
+      { t:"Iterating on it", i:"The rounds of change between the first version and the final one." },
+      { t:"Choosing the final version", i:"Judging which option was best, and being able to say why." },
+      { t:"Deciding when to stop", i:"Recognising it was finished, rather than running out of ideas." }
+    ],
+    qs: [
+      { id:"control", q:"Was the concept yours?", sub:"The idea of what this should be, before anything was generated.",
+        o:[["Yes, and I held onto it the whole way",1],["Yes, loosely",.7],["I picked from what it offered",.35],["It came from the tool",0]] },
+      { id:"knowledge", q:"Could you explain why this version and not the other options?", sub:"The specific choices: colour, composition, tone, framing.",
+        o:[["Yes, choice by choice",1],["For the parts I directed",.7],["Only that it looked better",.35],["No, it just looked right",0]] },
+      { id:"investment", q:"What did you put into this that you can't get back?", sub:"Time spent generating, judging, and refining.",
+        o:[["Hours of iterating and refining",1],["A solid working session",.7],["A few rounds of prompting",.35],["Almost nothing",0]] },
+      { id:"verify", q:"Did you check it for anything that shouldn't be there?", sub:"Errors, artefacts, borrowed style, anything misleading.",
+        o:[["Yes, closely",1],["A reasonable look",.7],["A quick glance",.35],["No",0]] },
+      { id:"rebuild", q:"Could you make something like this again without the tool?", sub:"The hardest question here, and the most useful one.",
+        o:[["Yes, all of it",1],["Parts of it",.5],["No",0]] }
+    ]
+  }
+};
+
+const GUT = [
+  { t:"All mine", v:1 }, { t:"Mostly mine", v:.8 }, { t:"Genuinely shared", v:.55 },
+  { t:"Mostly the tool's", v:.3 }, { t:"Not really mine", v:.1 }
+];
+
+function shareLabel(v) {
+  if (v >= 95) return "Entirely me";
+  if (v >= 78) return "Mostly me";
+  if (v >= 60) return "More me than the tool";
+  if (v > 40) return "Evenly shared";
+  if (v > 22) return "More the tool than me";
+  if (v > 5) return "Mostly the tool";
+  return "Entirely the tool";
+}
+
+const KEY = "ownership-audit-v4";
+const BLANK = { preset:null, gut:null, slide:{}, touched:{}, na:{}, ans:{}, step:1 };
+const S = Object.assign({}, BLANK);
+try { const r = localStorage.getItem(KEY); if (r) Object.assign(S, JSON.parse(r)); } catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t).replace(/[<>&"]/g, (c) => ({ "<":"&lt;", ">":"&gt;", "&":"&amp;", '"':"&quot;" })[c]);
+const cat = () => CATS[S.preset];
+let LAST = null;
+
+function wireInfo(scope) {
+  scope.querySelectorAll("button.info").forEach(function (b) {
+    b.addEventListener("click", function () {
+      const box = document.getElementById(b.getAttribute("aria-controls"));
+      const open = b.getAttribute("aria-expanded") === "true";
+      b.setAttribute("aria-expanded", String(!open));
+      box.classList.toggle("open", !open);
+    });
+  });
+}
+
+function renderSteps() {
+  const labels = ["Setup","Contributions","Questions","Result"];
+  $("steps").innerHTML = labels.map(function (l, i) {
+    const n = i + 1;
+    const cls = S.step === n ? "dot on" : (S.step > n ? "dot done" : "dot");
+    return '<span><i class="' + cls + '"></i>' + l + '</span>' + (i < 3 ? '<span style="opacity:.35">&nbsp;/&nbsp;</span>' : '');
+  }).join("");
+}
+function renderPreset() {
+  $("preset").innerHTML = Object.keys(CATS).map(function (k) {
+    return '<button type="button" class="opt" data-p="' + esc(k) + '" aria-pressed="' + (S.preset === k) + '">' + esc(k) + '</button>';
+  }).join("");
+  $("preset").querySelectorAll("button").forEach(function (b) {
+    b.addEventListener("click", function () { S.preset = b.dataset.p; save(); renderPreset(); renderRoles(); renderQs(); });
+  });
+}
+function renderGut() {
+  $("gut").innerHTML = GUT.map(function (g, i) {
+    return '<button type="button" class="opt" data-i="' + i + '" aria-pressed="' + (S.gut === i) + '">' + esc(g.t) + '</button>';
+  }).join("");
+  $("gut").querySelectorAll("button").forEach(function (b) {
+    b.addEventListener("click", function () { S.gut = +b.dataset.i; save(); renderGut(); });
+  });
+}
+
+function renderRoles() {
+  if (!S.preset) { $("roles").innerHTML = ""; return; }
+  $("s2title").textContent = cat().title;
+  $("roles").innerHTML = cat().roles.map(function (r, i) {
+    const key = S.preset + "|" + i;
+    const v = S.slide[key] === undefined ? 50 : S.slide[key];
+    const touched = !!S.touched[key];
+    const off = !!S.na[key];
+    const bid = "rinfo" + i;
+    return '<div class="roleRow' + (off ? ' off' : '') + '" data-key="' + esc(key) + '">' +
+      '<div class="roleTop"><div class="roleLeft">' +
+        '<button type="button" class="info" aria-expanded="false" aria-controls="' + bid + '" aria-label="What does this mean?">i</button>' +
+        '<div class="roleName">' + esc(r.t) + '</div></div>' +
+        '<button type="button" class="na" aria-pressed="' + off + '">Not applicable</button></div>' +
+      '<div class="infoBox" id="' + bid + '">' + esc(r.i) + '</div>' +
+      '<div class="sliderWrap">' +
+        '<input type="range" min="0" max="100" step="5" value="' + v + '"' + (touched ? '' : ' class="untouched"') +
+        ' aria-label="' + esc(r.t) + '" aria-valuetext="' + (touched ? esc(shareLabel(v)) : 'Not set yet') + '">' +
+        '<div class="ends"><span>All the tool</span><span>All me</span></div>' +
+        '<div class="readout' + (touched ? '' : ' untouched') + '">' + (touched ? esc(shareLabel(v)) : "Slide to set") + '</div>' +
+      '</div></div>';
+  }).join("");
+
+  $("roles").querySelectorAll(".roleRow").forEach(function (row) {
+    const key = row.dataset.key;
+    const range = row.querySelector('input[type="range"]');
+    const readout = row.querySelector(".readout");
+    range.addEventListener("input", function () {
+      const v = +range.value;
+      S.slide[key] = v; S.touched[key] = true; save();
+      range.classList.remove("untouched");
+      range.setAttribute("aria-valuetext", shareLabel(v));
+      readout.textContent = shareLabel(v);
+      readout.classList.remove("untouched");
+    });
+    row.querySelector(".na").addEventListener("click", function () { S.na[key] = !S.na[key]; save(); renderRoles(); });
+  });
+  wireInfo($("roles"));
+}
+
+function renderQs() {
+  if (!S.preset) { $("qs").innerHTML = ""; return; }
+  $("qs").innerHTML = cat().qs.map(function (q) {
+    return '<div class="card"><p class="q">' + esc(q.q) + '</p><p class="qsub">' + esc(q.sub) + '</p>' +
+      q.o.map(function (o, i) {
+        return '<button type="button" class="opt" data-q="' + esc(q.id) + '" data-i="' + i +
+          '" aria-pressed="' + (S.ans[q.id] === i) + '">' + esc(o[0]) + '</button>';
+      }).join("") + '</div>';
+  }).join("");
+  $("qs").querySelectorAll("button.opt").forEach(function (b) {
+    b.addEventListener("click", function () { S.ans[b.dataset.q] = +b.dataset.i; save(); renderQs(); });
+  });
+}
+
+function mapRatio() {
+  if (!S.preset) return null;
+  let sum = 0, n = 0;
+  cat().roles.forEach(function (r, i) {
+    const key = S.preset + "|" + i;
+    if (S.na[key] || !S.touched[key]) return;
+    sum += S.slide[key] / 100; n++;
+  });
+  return n ? { ratio: sum / n, n: n } : null;
+}
+function val(id) {
+  const q = cat().qs.filter(function (x) { return x.id === id; })[0];
+  return q.o[S.ans[id]][1];
+}
+function band(v) { return v >= .72 ? "mostly yours" : (v >= .38 ? "genuinely shared" : "mostly the tool's"); }
+
+function renderResult() {
+  const m = mapRatio();
+  const dials = { Control: val("control"), Knowledge: val("knowledge"), Investment: val("investment") };
+  const dialAvg = (dials.Control + dials.Knowledge + dials.Investment) / 3;
+  const acct = 0.6 * (m ? m.ratio : 0) + 0.4 * dialAvg;
+  const gutV = GUT[S.gut].v;
+  const gap = gutV - acct;
+
+  $("bigBand").textContent = band(acct) + ".";
+  $("bigCat").textContent = S.preset + ", based on the parts you rated and your five answers.";
+
+  let head, sub;
+  if (gap > .18) {
+    head = "It felt more yours than you can account for.";
+    sub = "You said it felt " + GUT[S.gut].t.toLowerCase() + ". Going part by part, the work comes out " + band(acct) +
+      ". That gap is ordinary, and finding it is the whole point: the feeling of ownership tends to arrive before the ownership does.";
+  } else if (gap < -.18) {
+    head = "You are underselling your part.";
+    sub = "You said it felt " + GUT[S.gut].t.toLowerCase() + ", but your own account comes out " + band(acct) +
+      ". The parts you held are real contributions. Put your name on them.";
+  } else {
+    head = "Your sense of it matches your account of it.";
+    sub = "You felt it was " + GUT[S.gut].t.toLowerCase() + " and the detail bears that out. That calibration matters more than which direction it points.";
+  }
+  const rb = val("rebuild");
+  if (rb === 0) sub += " You also said you couldn't do this again without the tool, which means you carry responsibility for it without yet owning the skill inside it.";
+  else if (rb === 1) sub += " And you said you could do it again unaided, which is the strongest claim on this page.";
+  $("verdict").textContent = head;
+  $("verdictSub").textContent = sub;
+
+  const sc = $("scale");
+  sc.querySelectorAll(".mark").forEach(function (x) { x.remove(); });
+  [{ v: gutV, c: "var(--orange)", t: "Felt" }, { v: acct, c: "var(--dark-teal)", t: "Accounted for" }].forEach(function (p) {
+    const d = document.createElement("div");
+    d.className = "mark";
+    d.style.left = Math.min(95, Math.max(5, p.v * 100)) + "%";
+    d.innerHTML = '<div class="pin" style="background:' + p.c + '"></div><div class="tag" style="color:' + p.c + '">' + p.t + '</div>';
+    sc.appendChild(d);
+  });
+
+  const labels = { 1:"Strong", 0.7:"Solid", 0.5:"Partial", 0.35:"Thin", 0:"Absent" };
+  const names = Object.keys(dials);
+  $("dials").innerHTML = names.map(function (key, idx) {
+    const bid = "dinfo" + idx;
+    return '<div class="dial"><div class="dialHead"><div class="dn">' + key + '</div>' +
+      '<button type="button" class="info" aria-expanded="false" aria-controls="' + bid + '" aria-label="What does ' + key + ' mean?">i</button></div>' +
+      '<div class="bar"><i style="width:' + Math.round(dials[key] * 100) + '%"></i></div>' +
+      '<div class="dv">' + (labels[dials[key]] || "") + '</div>' +
+      '<div class="infoBox" id="' + bid + '">' + esc(DIAL_INFO[key]) + '</div></div>';
+  }).join("");
+  wireInfo($("dials"));
+
+  const lowest = names.slice().sort(function (a, b) { return dials[a] - dials[b]; })[0];
+  const vals = names.map(function (x) { return dials[x]; });
+  const spread = Math.max.apply(null, vals) - Math.min.apply(null, vals);
+  const dialNote = spread < .2
+    ? "Your three routes are even. Whatever ownership you feel here, it rests on all three rather than on one."
+    : "The thinnest route here is " + lowest.toLowerCase() + ". That is usually the one worth strengthening before you claim the work, and with AI it is most often knowledge.";
+  $("dialNote").textContent = dialNote;
+
+  const mine = cat().roles.filter(function (r, i) {
+    const key = S.preset + "|" + i;
+    return !S.na[key] && S.touched[key] && S.slide[key] >= 45;
+  });
+  $("claimList").innerHTML = mine.length
+    ? mine.map(function (r) { return "<li>" + esc(r.t) + "</li>"; }).join("")
+    : "<li>You didn't hold at least half of any part. Worth a second look before this goes anywhere.</li>";
+
+  const unchecked = val("verify") < .7;
+  $("verifyNote").innerHTML = unchecked
+    ? "<strong style='color:var(--fg)'>You said you didn't fully check it.</strong> That doesn't reduce anything in this column. Credit is prorated to what you contributed. Responsibility isn't."
+    : "This column doesn't change based on your answers. Credit is prorated to what you contributed. Responsibility isn't.";
+
+  const qa = cat().qs.map(function (q) { return { q: q.q, a: q.o[S.ans[q.id]][0] }; });
+  $("recap").innerHTML =
+    '<div><b>Felt like</b><span>' + esc(GUT[S.gut].t) + '</span></div>' +
+    qa.map(function (x) { return '<div><b>' + esc(x.q) + '</b><span>' + esc(x.a) + '</span></div>'; }).join("") +
+    '<div><b>Parts where you held at least half</b><span>' + mine.length + ' of ' + (m ? m.n : 0) + ' rated</span></div>';
+
+  LAST = {
+    preset: S.preset, bandLabel: band(acct), gutLabel: GUT[S.gut].t, gutV: gutV, acct: acct,
+    head: head, sub: sub, dials: dials, dialLabels: labels, dialNote: dialNote,
+    mine: mine.map(function (r) { return r.t; }), rated: m ? m.n : 0, qa: qa, unchecked: unchecked
+  };
+}
+
+/* ---------- PDF ---------- */
+const INK = [9,29,32], DEEP = [9,60,68], TEAL = [17,94,110], GRAY = [65,64,66],
+      FAINT = [109,110,113], ORANGE = [247,148,30], RULE = [203,218,221];
+
+function buildPdf() {
+  const jsPDF = window.jspdf.jsPDF;
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const PW = 612, PH = 792, M = 54, W = PW - M * 2;
+  let y = M;
+
+  function need(h) { if (y + h > PH - M) { doc.addPage(); y = M; } }
+  function block(str, o) {
+    o = o || {};
+    const size = o.size || 10.5, lead = o.lead || size * 1.42;
+    doc.setFont(o.font || "helvetica", o.style || "normal");
+    doc.setFontSize(size);
+    doc.setTextColor.apply(doc, o.color || GRAY);
+    const lines = doc.splitTextToSize(str, o.w || W);
+    need(lines.length * lead);
+    doc.text(lines, o.x || M, y + size * 0.85);
+    y += lines.length * lead + (o.gap === undefined ? 8 : o.gap);
+  }
+  function rule(c) {
+    need(14);
+    doc.setDrawColor.apply(doc, c || RULE);
+    doc.setLineWidth(c ? 2 : 0.7);
+    doc.line(M, y, c ? M + 40 : PW - M, y);
+    y += c ? 14 : 12;
+  }
+  function heading(str) {
+    need(30);
+    block(str, { size: 12.5, style: "bold", color: DEEP, gap: 4 });
+  }
+
+  // header
+  block("AI Ownership Assessment", { size: 22, font: "times", style: "bold", color: DEEP, gap: 4 });
+  rule([181, 205, 52]);
+  block(LAST.preset + "   |   " + new Date().toLocaleDateString(), { size: 9.5, color: FAINT, gap: 20 });
+
+  // headline result
+  block("This work is", { size: 10.5, color: FAINT, gap: 2 });
+  block(LAST.bandLabel + ".", { size: 26, font: "times", style: "bold", color: DEEP, gap: 20 });
+
+  // verdict
+  block(LAST.head, { size: 15, font: "times", style: "bold", color: INK, gap: 6 });
+  block(LAST.sub, { size: 10.5, color: GRAY, gap: 18 });
+
+  // scale
+  need(54);
+  const sy = y + 10;
+  doc.setDrawColor.apply(doc, RULE); doc.setLineWidth(3);
+  doc.line(M, sy, PW - M, sy);
+  function pin(v, col, label, below) {
+    const x = M + Math.min(0.97, Math.max(0.03, v)) * W;
+    doc.setFillColor.apply(doc, col);
+    doc.circle(x, sy, 5.5, "F");
+    doc.setFontSize(8); doc.setFont("helvetica", "bold");
+    doc.setTextColor.apply(doc, col);
+    doc.text(label, x, below ? sy + 17 : sy - 10, { align: "center" });
+  }
+  pin(LAST.gutV, ORANGE, "Felt", false);
+  pin(LAST.acct, TEAL, "Accounted for", true);
+  doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor.apply(doc, FAINT);
+  doc.text("Mostly the tool's", M, sy + 32);
+  doc.text("Mostly yours", PW - M, sy + 32, { align: "right" });
+  y = sy + 48;
+
+  // routes
+  heading("The three routes to ownership");
+  Object.keys(LAST.dials).forEach(function (k) {
+    const v = LAST.dials[k];
+    need(40);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor.apply(doc, INK);
+    doc.text(k, M, y + 8);
+    doc.setFont("helvetica", "normal"); doc.setTextColor.apply(doc, FAINT);
+    doc.text(LAST.dialLabels[v] || "", PW - M, y + 8, { align: "right" });
+    doc.setFillColor.apply(doc, RULE);
+    doc.roundedRect(M, y + 14, W, 6, 3, 3, "F");
+    if (v > 0) { doc.setFillColor.apply(doc, TEAL); doc.roundedRect(M, y + 14, W * v, 6, 3, 3, "F"); }
+    y += 30;
+    block(DIAL_INFO[k], { size: 9, color: FAINT, gap: 10 });
+  });
+  block(LAST.dialNote, { size: 9.5, style: "italic", color: GRAY, gap: 18 });
+
+  // ledger
+  heading("What you can claim");
+  if (LAST.mine.length) {
+    LAST.mine.forEach(function (t) { block("\u2022  " + t, { size: 10.5, gap: 2, x: M + 6, w: W - 6 }); });
+    y += 10;
+  } else {
+    block("You didn't hold at least half of any part. Worth a second look before this goes anywhere.", { size: 10.5, gap: 12 });
+  }
+
+  heading("What you are responsible for either way");
+  ["Every factual claim in it being true",
+   "Every source being real and saying what it's cited for",
+   "Anything in it that misleads a reader",
+   "Everything that follows from your name being on it"].forEach(function (t) {
+    block("\u2022  " + t, { size: 10.5, gap: 2, x: M + 6, w: W - 6 });
+  });
+  y += 8;
+  block(LAST.unchecked
+    ? "You said you didn't fully check it. That doesn't reduce anything in this list. Credit is prorated to what you contributed. Responsibility isn't."
+    : "This list doesn't change based on your answers. Credit is prorated to what you contributed. Responsibility isn't.",
+    { size: 9.5, style: "italic", color: FAINT, gap: 18 });
+
+  // answers
+  heading("Your answers");
+  block("Felt like:  " + LAST.gutLabel, { size: 10.5, gap: 8 });
+  LAST.qa.forEach(function (x) {
+    block(x.q, { size: 10, style: "bold", color: INK, gap: 1 });
+    block(x.a, { size: 10.5, color: GRAY, gap: 9, x: M + 6, w: W - 6 });
+  });
+  block("Parts where you held at least half:  " + LAST.mine.length + " of " + LAST.rated + " rated", { size: 10.5, gap: 18 });
+
+  rule();
+  block("One honest limit. This records what you were willing to say about your own work. It is a reflection prompt, not a measurement, and the research behind it says our sense of ownership is poorly calibrated to begin with. Treat the result as a conversation starter.",
+    { size: 9, color: FAINT, gap: 10 });
+  block("Built on Pierce, Kostova & Dirks (2001) on the routes to psychological ownership, and Porsdam Mann, Earp, Nyholm et al. (2023) on the credit-blame asymmetry.",
+    { size: 9, color: FAINT, gap: 0 });
+
+  return doc.output("blob");
+}
+
+/* ---------- capability wiring ---------- */
+let downloadsNS = null;
+function pdfLoaded() { return !!(window.jspdf && window.jspdf.jsPDF); }
+
+function waitForClaude() {
+  return new Promise(function (resolve) {
+    if (window.claude && window.claude.use) return resolve(window.claude);
+    let n = 0;
+    const t = setInterval(function () {
+      if (window.claude && window.claude.use) { clearInterval(t); resolve(window.claude); }
+      else if (++n > 60) { clearInterval(t); resolve(null); }
+    }, 200);
+  });
+}
+
+(function () {
+  waitForClaude().then(function (c) {
+    if (!c) return;
+    return c.use("downloads").then(function (ns) {
+      downloadsNS = ns;
+      if (ns && pdfLoaded()) $("pdfBtn").classList.remove("hidden");
+    });
+  }).catch(function () {});
+})();
+
+$("pdfBtn").addEventListener("click", function () {
+  if (!downloadsNS || !pdfLoaded() || !LAST) return;
+  const btn = $("pdfBtn"), st = $("dlStatus");
+  btn.disabled = true; st.textContent = "Building the PDF\u2026";
+  let blob;
+  try { blob = buildPdf(); }
+  catch (e) { btn.disabled = false; st.textContent = "Couldn't build the PDF."; return; }
+  downloadsNS.save({ filename: "AI-Ownership-Assessment.pdf", data: blob }).then(function () {
+    btn.disabled = false; st.textContent = "Saved.";
+    setTimeout(function () { st.textContent = ""; }, 4000);
+  }).catch(function (err) {
+    btn.disabled = false;
+    const code = err && err.code;
+    st.textContent = code === "declined" ? "" :
+      (code === "rate_limited" ? "A prompt is already open. Try again in a moment." : "Download unavailable here.");
+  });
+});
+
+/* ---------- start over (two-tap, no modal) ---------- */
+let armed = false, armTimer = null;
+$("resetBtn").addEventListener("click", function () {
+  const b = $("resetBtn");
+  if (!armed) {
+    armed = true;
+    b.textContent = "Tap again to clear";
+    b.classList.add("arm");
+    clearTimeout(armTimer);
+    armTimer = setTimeout(function () {
+      armed = false; b.textContent = "Start over"; b.classList.remove("arm");
+    }, 5000);
+    return;
+  }
+  clearTimeout(armTimer);
+  armed = false;
+  b.textContent = "Start over";
+  b.classList.remove("arm");
+  Object.assign(S, { preset:null, gut:null, slide:{}, touched:{}, na:{}, ans:{}, step:1 });
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  LAST = null;
+  $("dlStatus").textContent = "";
+  ["e1","e2","e3"].forEach(function (id) { $(id).classList.add("hidden"); });
+  renderPreset(); renderGut(); renderRoles(); renderQs();
+  show(1);
+});
+
+/* ---------- navigation ---------- */
+function show(n) {
+  S.step = n; save();
+  [1,2,3,4].forEach(function (i) { $("s" + i).classList.toggle("hidden", i !== n); });
+  renderSteps();
+  if (n === 4) renderResult();
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+$("to2").addEventListener("click", function () {
+  if (S.gut === null || !S.preset) { $("e1").classList.remove("hidden"); return; }
+  $("e1").classList.add("hidden"); show(2);
+});
+$("back2").addEventListener("click", function () { show(1); });
+$("to3").addEventListener("click", function () {
+  const m = mapRatio();
+  if (!m || m.n < 3) { $("e2").classList.remove("hidden"); return; }
+  $("e2").classList.add("hidden"); show(3);
+});
+$("back3").addEventListener("click", function () { show(2); });
+$("to4").addEventListener("click", function () {
+  const qs = cat().qs;
+  for (let i = 0; i < qs.length; i++) {
+    if (S.ans[qs[i].id] === undefined) { $("e3").classList.remove("hidden"); return; }
+  }
+  $("e3").classList.add("hidden"); show(4);
+});
+$("back4").addEventListener("click", function () { show(3); });
+
+renderPreset(); renderGut(); renderRoles(); renderQs();
+show(S.step && S.step < 4 ? S.step : 1);
+</script>
+</body>
+</html>
